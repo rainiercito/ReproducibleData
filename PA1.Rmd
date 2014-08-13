@@ -1,0 +1,134 @@
+---
+title: "Reproducible Research: Peer Assignement 1"
+author: "Vïctor Rainier Cruz Pérez"
+date: "11 de agosto de 2014"
+output: html_document
+---
+
+
+###  Unzip and read the CSV into a raw dataframe: 
+
+```{r}
+## Download the url content to a zip file using the online download function (if the web repository its available)
+zipfile <- "activity.zip"
+if(!file.exists(zipfile)) {
+  url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+  download.file(url, destfile = zipfile, method = "curl", quiet = TRUE)
+}
+##Unzip the file and Check if it was able to download the file from the web site
+unzip(zipfile)
+fileflag <- "activity.csv"
+if(!file.exists(fileflag)) { stop("It was impossible to download the Zip file from source") }
+##Assign the data to a CVS file
+ActDownloadedInfo <- read.csv(fileflag)
+```
+
+
+### What is mean total number of steps taken per day?
+
+1)  transform the data to aggregate steps by date:
+
+```{r}
+## A Function which it will add by the column date, the steps per day
+sumByDtFunct <- function(data, column) {
+  dates <- split(data, data$date)
+  sapply(dates, function(byDate) {sum(byDate[[column]])})
+}
+## obtain the mean of each day steps  (Steps column)
+dailydata<-sumByDtFunct(ActDownloadedInfo, "steps")
+mean(dailydata, na.rm = TRUE)
+
+## obtain the median of each day steps
+median(dailydata, na.rm = TRUE)
+```
+Our Data Histogram is:
+
+```{r}
+hist(dailydata)
+```
+
+### What is the average daily activity pattern?
+
+
+
+1) Obtain the Mean of the Aggregate-Data Steps Per Day:
+
+```{r}
+##Split the Data by intervals
+intrvls <- split(ActDownloadedInfo, ActDownloadedInfo$interval)
+##Function which determains the mean by step intervals
+meanByInterval <- sapply(intrvls, function(byInterval) {mean(byInterval$steps, na.rm = TRUE)})
+```
+
+2)  Activity by Interval:
+
+```{r}
+## Trying to know more about the Interval patterns by ploting the data by the interval names
+plot(names(meanByInterval), meanByInterval, type='l', xlab = "Interval", ylab = "Step's Mean")
+```
+
+3) The interval which has more steps on average is: 
+```{r} 
+as.numeric(names(which.max(meanByInterval)))
+```
+
+### Imputing missing values
+
+1) Calculating and reporting the total number of missing values in the dataset:
+ 
+```{r}
+##Counting how many NA values are inside the dataset
+sum(is.na(ActDownloadedInfo))
+```
+
+Determine the mean by interval considering the NAs values removal across all days:
+
+```{r}
+##determine the mean across all days considering the Na values removal
+ActDownloadedInfo$imptSteps <-with(ActDownloadedInfo,ifelse(is.na(steps), meanByInterval[as.character(interval)], steps))
+```
+
+Consolidate the Steps by date in aggregated way and show them in an Histogram:
+
+```{r}
+imptSmmbyDt <- sumByDtFunct(ActDownloadedInfo, "imptSteps")
+hist(imptSmmbyDt)
+```
+Determine its median and mean:
+
+```{r}
+## determine the median
+median(imptSmmbyDt)
+## determine the mean
+mean(imptSmmbyDt)
+```
+
+Base on our findings one can see that the mean is the same no matter if we are considering or not considering the NA values.  
+
+In contrast, the median suffered a change. This change mades the median be equal to the mean.  This effect is caused by the NA removal that implies no outliers consideration. 
+
+### Are there differences in activity patterns between weekdays and weekends?
+
+1)  Create a new factor variable in the dataset with two levels: Weekend and Weekdays.
+2)  Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+
+```{r}
+## Agroup the information on Weekend compossed by -Saturday and Sunday- and the weekdays
+Dnames <- weekdays(as.POSIXct(ActDownloadedInfo$date))
+ActDownloadedInfo$dayType <- ifelse(Dnames %in% c('Saturday', 'Sunday'), 'Weekend', 'Weekday')
+
+## Load the auxiliary Libraries
+library(plyr)
+library(lattice)
+
+meanByIntrvlandDyTp <- ddply(ActDownloadedInfo, .(interval, dayType), 
+      function(group) {data.frame(mean = mean(group$steps, na.rm = TRUE))})
+
+with(meanByIntrvlandDyTp, xyplot(mean ~ interval | dayType,
+            type = 'l',
+            xlab = 'Interval',
+            ylab = 'Number of Steps',
+            layout = c(1,2)))
+```
+
+By comparing the Weekend and Weekdays activity in the graph, one can distinguish that during the first 1,000 intervals the behavior its quite similar in both Weekends and Weekdays. The steps average for the weekends it seems to be higher than during the weekdays, also it seems that the standard variation is lower during weekends than weekdays. Also, it seems that the activity levels get lower earlier during the weekdays comparing with the weekend's activity. 
