@@ -1,0 +1,133 @@
+---
+title: U.S. National Oceanic and Atmospheric Administration's (NOAA) Storm Database
+  Analysis Reproducible Analysis using RMarkdown Tool
+author: "Víctor Rainier Cruz Pérez"
+date: "August 13th, 2014"
+output: html_document
+---
+
+### Synopsis
+
+This exercise intends give to one the opportunity to use in a comprehensive way the R, Markdown and Knit Tools in order execute a Reproducible Research exercise. One needs to address two questions: 
+
+- Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+- Across the United States, which types of events have the greatest economic consequences?
+
+To answer this questions, the exercise will take into consideration the characteristics of major storms and weather events including when and where they occur, as well as estimates of any fatalities, injuries, and property damage that the the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database tracks.
+
+The database its available at this web site <https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2>.
+
+### Data processing Procedure
+
+- Set the workspace in the R Environment
+- Extract, load and categorize the data by weather event, health and economic impact from the NOAA's website 
+
+```{r, echo=FALSE}
+setwd("~/Desktop/Rcoursera/Curso5/ReproducibleData")
+WeatherData = read.csv("repdata-data-StormData.csv", header = TRUE, stringsAsFactors = FALSE)
+DataByEvent <- c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDMGEXP")
+Info <-WeatherData[DataByEvent]
+```
+
+Formating the data related to Property Damage
+```{r, echo=FALSE}
+unique(Info$PROPDMGEXP)
+## Formating the Exponent of the Property Data
+Info$PROPEXP[Info$PROPDMGEXP == "K"] <- 1000
+Info$PROPEXP[Info$PROPDMGEXP == "M"] <- 1e+06
+Info$PROPEXP[Info$PROPDMGEXP == ""] <- 1
+Info$PROPEXP[Info$PROPDMGEXP == "B"] <- 1e+09
+Info$PROPEXP[Info$PROPDMGEXP == "m"] <- 1e+06
+Info$PROPEXP[Info$PROPDMGEXP == "0"] <- 1
+Info$PROPEXP[Info$PROPDMGEXP == "5"] <- 1e+05
+Info$PROPEXP[Info$PROPDMGEXP == "6"] <- 1e+06
+Info$PROPEXP[Info$PROPDMGEXP == "4"] <- 10000
+Info$PROPEXP[Info$PROPDMGEXP == "2"] <- 100
+Info$PROPEXP[Info$PROPDMGEXP == "3"] <- 1000
+Info$PROPEXP[Info$PROPDMGEXP == "h"] <- 100
+Info$PROPEXP[Info$PROPDMGEXP == "7"] <- 1e+07
+Info$PROPEXP[Info$PROPDMGEXP == "H"] <- 100
+Info$PROPEXP[Info$PROPDMGEXP == "1"] <- 10
+Info$PROPEXP[Info$PROPDMGEXP == "8"] <- 1e+08
+Info$PROPEXP[Info$PROPDMGEXP == "+"] <- 0
+Info$PROPEXP[Info$PROPDMGEXP == "-"] <- 0
+Info$PROPEXP[Info$PROPDMGEXP == "?"] <- 0
+
+```
+
+Formating the data related to Crop Damage
+```{r, echo=FALSE}
+unique(Info$PROPDMGEXP)
+## Formating the Exponent of the Crop Data
+Info$CROPEXP[Info$CROPDMGEXP == "M"] <- 1e+06
+Info$CROPEXP[Info$CROPDMGEXP == "K"] <- 1000
+Info$CROPEXP[Info$CROPDMGEXP == "m"] <- 1e+06
+Info$CROPEXP[Info$CROPDMGEXP == "B"] <- 1e+09
+Info$CROPEXP[Info$CROPDMGEXP == "0"] <- 1
+Info$CROPEXP[Info$CROPDMGEXP == "k"] <- 1000
+Info$CROPEXP[Info$CROPDMGEXP == "2"] <- 100
+Info$CROPEXP[Info$CROPDMGEXP == ""] <- 1
+Info$CROPEXP[Info$CROPDMGEXP == "?"] <- 0
+```
+
+
+
+###Compute the Amount that represents the Property and Crop Damage
+
+```{r, echo=FALSE}
+## Compute the Amount that represents the Property Damage
+Info$PROPDMGVAL <- Info$PROPDMG * Info$PROPEXP
+## Compute the Amount that represents the Crop Damage
+Info$CROPDMGVAL <- Info$CROPDMG * Info$CROPEXP
+```
+
+
+###Consolidating the Data
+
+```{r, echo=FALSE}
+
+fatal <- aggregate(FATALITIES ~ EVTYPE, info = Info, FUN = sum)
+injury <- aggregate(INJURIES ~ EVTYPE, info = Info, FUN = sum)
+propdmg <- aggregate(PROPDMGVAL ~ EVTYPE, info = Info, FUN = sum)
+cropdmg <- aggregate(CROPDMGVAL ~ EVTYPE, info = Info, FUN = sum)
+```
+
+### Analyzing Results
+
+###1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+```{r}
+## Extract top five events with highest fatalities
+## Extract top five events with highest injuries
+top5fatal <- fatal[order(-fatal$FATALITIES), ][1:5, ]
+top5injury <- injury[order(-injury$INJURIES), ][1:5, ]
+
+## Plot both top five events with highest fatalities and injuries
+par(mfrow = c(1, 2), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+barplot(top5fatal$FATALITIES, las = 3, names.arg = top5fatal$EVTYPE, main = "Top 5 Weather Events With Highest Fatalities", ylab = "number of fatalities", col = "red")
+barplot(top5injuries$INJURIES, las = 3, names.arg = top5injury$EVTYPE, main = "Top 5 Weather Events With Highest Injuries", ylab = "number of injuries", col = "red")
+```
+
+From the graph, one can conclude that the most harmful weather event is Tornado that causes the highest number of fatalities and injuries amoung the Country.
+
+
+###2. Across the United States, which types of events have the greatest economic consequences?
+
+Identigy the top 5 events that causes the highest property damage
+```{r}
+##Extract top 5 events that causes the highest property damage
+##Extract top 5 events that causes the highest crop damage
+top5propdmg <- propdmg[order(-propdmg$PROPDMGVAL), ][1:5, ]
+top5cropdmg <- cropdmg[order(-cropdmg$CROPDMGVAL), ][1:5, ]
+##Place in a graph the top 5 events with highest property and crop damage
+par(mfrow = c(1, 2), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+barplot(top5propdmg$PROPDMGVAL/(10^9), las = 3, names.arg = top5propdmg$EVTYPE, 
+    main = "Top 5 Events that Causes the Highest Property Damages", ylab = "Cost of damages (in billions)", 
+    col = "blue")
+barplot(top5cropdmg$CROPDMGVAL/(10^9), las = 3, names.arg = top5cropdmg$EVTYPE, 
+    main = "Top 5 Events that Causes the Highest Crop Damages", ylab = "Cost of damages (in billions)", 
+    col = "blue")
+```
+
+Flooding, tornadoes and typhoons cause the highest damages to properties and material things; on the other hand, drought and flood cause the higest damange in crops.
